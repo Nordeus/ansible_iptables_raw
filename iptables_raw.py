@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 """
@@ -25,9 +25,9 @@ DOCUMENTATION = '''
 ---
 module: iptables_raw
 short_description: Manage iptables rules
-version_added: "2.1"
+version_added: "2.2"
 description:
-  - Adds and removes iptables rules
+  - Add/remove iptables rules while keeping state.
 options:
   backup:
     description:
@@ -122,6 +122,49 @@ EXAMPLES = '''
     name=*
     table=*
     state=absent
+'''
+
+RETURN = '''
+state:
+    description: state of the rules
+    returned: success
+    type: string
+    sample: present
+name:
+    description: name of the rules
+    returned: success
+    type: string
+    sample: open_tcp_80
+weight:
+    description: weight of the rules
+    returned: success
+    type: int
+    sample: 40
+ipversion:
+    description: IP version of iptables used
+    returned: success
+    type: int
+    sample: 6
+rules:
+    description: passed rules
+    returned: success
+    type: string
+    sample: "-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT"
+table:
+    description: iptables table used
+    returned: success
+    type: string
+    sample: filter
+backup:
+    description: if the iptables file should backed up
+    returned: success
+    type: boolean
+    sample: False
+keep_unmanaged:
+    description: if it should keep unmanaged rules
+    returned: success
+    type: boolean
+    sample: True
 '''
 
 import time, fcntl
@@ -864,8 +907,8 @@ def main():
     kw['changed'] = changed
     module.exit_json(**kw)
 
-# include magic from lib/ansible/module_common.py
-#<<INCLUDE_ANSIBLE_MODULE_COMMON>>
+# import module snippets
+from ansible.module_utils.basic import *
 
-if not os.environ.get('running_tests', False):
+if __name__ == '__main__':
     main()
