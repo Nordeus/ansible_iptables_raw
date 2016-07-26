@@ -654,7 +654,8 @@ class Iptables:
         rules_list = []
         dict_rules = self._get_table_rules_dict(table)
         default_chain_policies = []
-        for rule_name in sorted(dict_rules, key=lambda x: dict_rules[x]['weight']):
+        # Return list of rule names sorted by ('weight', 'rules') tuple.
+        for rule_name in sorted(dict_rules, key=lambda x: (dict_rules[x]['weight'], dict_rules[x]['rules'])):
             rules = dict_rules[rule_name]['rules']
             rules_list.append(self._filter_rules_and_custom_chains(rules, table))
             default_chain_policies.append(self._filter_default_chain_policies(rules, table))
