@@ -209,6 +209,29 @@ def generate_diff(dump_old, dump_new):
     return diff
 
 
+def compare_dictionaries(dict1, dict2):
+     if dict1 == None or dict2 == None:
+         return False
+
+     if type(dict1) is not dict or type(dict2) is not dict:
+         return False
+
+     shared_keys = set(dict2.keys()) & set(dict2.keys())
+
+     if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
+         return False
+
+
+     dicts_are_equal = True
+     for key in dict1.keys():
+         if type(dict1[key]) is dict:
+             dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key],dict2[key])
+         else:
+             dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
+
+     return dicts_are_equal
+
+
 class Iptables:
 
     # Default chains for each table
@@ -221,7 +244,7 @@ class Iptables:
     }
 
     # List of tables
-    TABLES = DEFAULT_CHAINS.keys()
+    TABLES = list(DEFAULT_CHAINS.copy().keys())
 
     # Directory which will store the state file.
     STATE_DIR = '/etc/ansible-iptables'
@@ -255,7 +278,7 @@ class Iptables:
         self._refresh_active_rules(table='*')
 
     def __eq__(self, other):
-        return (isinstance(other, self.__class__) and cmp(other.state_dict, self.state_dict) == 0)
+        return (isinstance(other, self.__class__) and compare_dictionaries(other.state_dict, self.state_dict))
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -622,7 +645,7 @@ class Iptables:
     # Returns list of custom chains of a table.
     def _get_custom_chains_list(self, table):
         custom_chains_list = []
-        for key, value in self._get_table_rules_dict(table).iteritems():
+        for key, value in self._get_table_rules_dict(table).items():
             # Ignore UNMANAGED_RULES_KEY_NAME key, since we only want managed custom chains.
             if key != Iptables.UNMANAGED_RULES_KEY_NAME:
                 for line in value['rules'].splitlines():
@@ -708,9 +731,9 @@ class Iptables:
             custom_chains_list.append(self._filter_custom_chains(rules, table))
             default_chain_policies.append(self._filter_default_chain_policies(rules, table))
         # Clean up empty strings from these two lists.
-        rules_list = filter(None, rules_list)
-        custom_chains_list = filter(None, custom_chains_list)
-        default_chain_policies = filter(None, default_chain_policies)
+        rules_list = list(filter(None, rules_list))
+        custom_chains_list = list(filter(None, custom_chains_list))
+        default_chain_policies = list(filter(None, default_chain_policies))
         if default_chain_policies:
             # Since iptables-restore applies the last chain policy it reads, we have to reverse the order of chain policies
             # so that those with the lowest weight (higher priority) are read last.
