@@ -372,14 +372,15 @@ class Iptables:
         active_rules = self._get_active_rules(table)
         if active_rules:
             policies = self._filter_default_chain_policies(active_rules, table)
-            rules = self._filter_rules_and_custom_chains(active_rules, table)
+            chains = self._filter_custom_chains(active_rules, table)
+            rules = self._filter_rules(active_rules, table)
             # Go over default policies and check if they are all ACCEPT.
             for line in policies.splitlines():
                 if not re.search(r'\bACCEPT\b', line):
                     needs_flush = True
                     break
             # If there is at least one rule or custom chain, that means we need flush.
-            if len(rules) > 0:
+            if len(chains) > 0 or len(rules) > 0:
                 needs_flush = True
         return needs_flush
 
@@ -557,15 +558,13 @@ class Iptables:
                 chains.append(line)
         return '\n'.join(chains)
 
-    # Returns lines with iptables rules and custom chains from an iptables-save
-    # table dump (removes chain policies, comments and everything else). By default
-    # returns all rules, if 'only_unmanged=True' returns rules which are not managed by Ansible.
-    def _filter_rules_and_custom_chains(self, rules, table, only_unmanaged=False):
+    # Returns lines with iptables rules from an iptables-save table dump
+    # (removes chain policies, custom chains, comments and everything else). By
+    # default returns all rules, if 'only_unmanged=True' returns rules which
+    # are not managed by Ansible.
+    def _filter_rules(self, rules, table, only_unmanaged=False):
         filtered_rules = []
-        # Get list of managed custom chains, which is needed to detect unmanaged custom chains
-        managed_custom_chains_list = self._get_custom_chains_list(table)
         for line in rules.splitlines():
-            # Extract rules
             if Iptables.is_rule(line):
                 if only_unmanaged:
                     tokens = shlex.split(line, comments=True)
@@ -585,16 +584,23 @@ class Iptables:
                         filtered_rules.append(line)
                 else:
                     filtered_rules.append(line)
-            # extract custom chains
+        return '\n'.join(filtered_rules)
+
+    # Same as _filter_rules(), but returns custom chains
+    def _filter_custom_chains(self, rules, table, only_unmanaged=False):
+        filtered_chains = []
+        # Get list of managed custom chains, which is needed to detect unmanaged custom chains
+        managed_custom_chains_list = self._get_custom_chains_list(table)
+        for line in rules.splitlines():
             if Iptables.is_custom_chain(line, table):
                 if only_unmanaged:
                     # The chain is not managed by this module if it's not in the list of managed custom chains.
                     chain_name = self._get_custom_chain_name(line, table)
                     if chain_name not in managed_custom_chains_list:
-                        filtered_rules.append(line)
+                        filtered_chains.append(line)
                 else:
-                    filtered_rules.append(line)
-        return '\n'.join(filtered_rules)
+                    filtered_chains.append(line)
+        return '\n'.join(filtered_chains)
 
     # Returns list of custom chains of a table.
     def _get_custom_chains_list(self, table):
@@ -668,24 +674,30 @@ class Iptables:
         # We first add a header e.g. '*filter'.
         generated_rules += '*' + table + '\n'
         rules_list = []
-        dict_rules = self._get_table_rules_dict(table)
+        custom_chains_list = []
         default_chain_policies = []
+        dict_rules = self._get_table_rules_dict(table)
         # Return list of rule names sorted by ('weight', 'rules') tuple.
         for rule_name in sorted(dict_rules, key=lambda x: (dict_rules[x]['weight'], dict_rules[x]['rules'])):
             rules = dict_rules[rule_name]['rules']
-            rules_list.append(self._filter_rules_and_custom_chains(rules, table))
-            default_chain_policies.append(self._filter_default_chain_policies(rules, table))
+            # Fail if some of the rules are bad
             self._fail_on_bad_rules(rules, table)
+            rules_list.append(self._filter_rules(rules, table))
+            custom_chains_list.append(self._filter_custom_chains(rules, table))
+            default_chain_policies.append(self._filter_default_chain_policies(rules, table))
         # Clean up empty strings from these two lists.
         rules_list = filter(None, rules_list)
+        custom_chains_list = filter(None, custom_chains_list)
         default_chain_policies = filter(None, default_chain_policies)
         if default_chain_policies:
             # Since iptables-restore applies the last chain policy it reads, we have to reverse the order of chain policies
             # so that those with the lowest weight (higher priority) are read last.
             generated_rules += '\n'.join(reversed(default_chain_policies)) + '\n'
-        if rules_list:
+        if custom_chains_list:
             # We remove duplicate custom chains so that iptables-restore doesn't fail because of that.
-            generated_rules += self._remove_duplicate_custom_chains('\n'.join(rules_list), table) + '\n'
+            generated_rules += self._remove_duplicate_custom_chains('\n'.join(sorted(custom_chains_list)), table) + '\n'
+        if rules_list:
+            generated_rules += '\n'.join(rules_list) + '\n'
         generated_rules += 'COMMIT\n'
         return generated_rules
 
@@ -701,8 +713,12 @@ class Iptables:
     def refresh_unmanaged_rules(self, table):
         # Get active iptables rules and clean them up.
         active_rules = self._get_active_rules(table)
-        unmanaged_rules = self._filter_rules_and_custom_chains(active_rules, table, only_unmanaged=True)
-        self._set_unmanaged_rules(table, unmanaged_rules)
+        unmanaged_chains_and_rules = []
+        unmanaged_chains_and_rules.append(self._filter_custom_chains(active_rules, table, only_unmanaged=True))
+        unmanaged_chains_and_rules.append(self._filter_rules(active_rules, table, only_unmanaged=True))
+        # Clean items which are empty strings
+        unmanaged_chains_and_rules = filter(None, unmanaged_chains_and_rules)
+        self._set_unmanaged_rules(table, '\n'.join(unmanaged_chains_and_rules))
 
     # Check if there are bad lines in the specified rules.
     def _fail_on_bad_rules(self, rules, table):
