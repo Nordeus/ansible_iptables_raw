@@ -730,7 +730,14 @@ class Iptables:
     # Check if there are bad lines in the specified rules.
     def _fail_on_bad_rules(self, rules, table):
         for line in rules.splitlines():
-            if not (Iptables.is_rule(line) or Iptables.is_custom_chain(line, table) or Iptables.is_default_chain(line, table) or Iptables.is_comment(line)):
+            tokens = shlex.split(line, comments=True)
+            if '-t' in tokens or '--table' in tokens:
+                msg="Iptables rules cannot contain '-t/--table' parameter. You should use the 'table' parameter of the module to set rules for a specific table."
+                Iptables.module.fail_json(msg=msg)
+            if not (Iptables.is_rule(line) \
+                    or Iptables.is_custom_chain(line, table) \
+                    or Iptables.is_default_chain(line, table) \
+                    or Iptables.is_comment(line)):
                 msg="Bad iptables rule '%s'! You can only use -A/--append, -N/--new-chain and -P/--policy to specify rules." % line
                 Iptables.module.fail_json(msg=msg)
 
