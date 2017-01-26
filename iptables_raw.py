@@ -51,7 +51,7 @@ options:
     default: "yes"
   name:
     description:
-      - Name that will be used as an identifier for these rules. It can contain alphanumeric characters and the underscore; has to be UNIQUE for a specified C(table). You can also pass C(name=*) with C(state=absent) to flush all rules in the selected table, or even all tables with C(table=*).
+      - Name that will be used as an identifier for these rules. It can contain alphanumeric characters, underscore or a space; has to be UNIQUE for a specified C(table). You can also pass C(name=*) with C(state=absent) to flush all rules in the selected table, or even all tables with C(table=*).
     required: true
   rules:
     description:
@@ -88,45 +88,47 @@ author:
 EXAMPLES = '''
 # Allow all IPv4 traffic coming in on port 80 (http)
 - iptables_raw:
-    name=allow_tcp_80
-    rules='-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT'
+    name: allow_tcp_80
+    rules: '-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT'
 
 # Set default rules with weight 10 and disregard all unmanaged rules
-- iptables_raw: >
-    name=default_rules
-    weight=10
-    keep_unmanaged=no
-    rules='-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
-           -A INPUT -i lo -j ACCEPT
-           -A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
-           -P INPUT DROP
-           -P FORWARD DROP
-           -P OUTPUT ACCEPT'
+- iptables_raw:
+    name: default_rules
+    weight: 10
+    keep_unmanaged: no
+    rules: |
+      -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+      -A INPUT -i lo -j ACCEPT
+      -A INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT
+      -P INPUT DROP
+      -P FORWARD DROP
+      -P OUTPUT ACCEPT
 
 # Allow all IPv6 traffic coming in on port 443 (https) with weight 50
 - iptables_raw:
-    ipversion=6
-    weight=50
-    name=allow_tcp_443
-    rules='-A INPUT -p tcp -m tcp --dport 443 -j ACCEPT'
+    ipversion: 6
+    weight: 50
+    name: allow_tcp_443
+    rules: '-A INPUT -p tcp -m tcp --dport 443 -j ACCEPT'
 
 # Remove the above rule
 - iptables_raw:
-    state=absent
-    ipversion=6
-    name=allow_tcp_443
+    state: absent
+    ipversion: 6
+    name: allow_tcp_443
 
 # Define rules with a custom chain
-- iptables_raw: >
-    name=custom1_rules
-    rules='-N CUSTOM1
-           -A CUSTOM1 -s 192.168.0.0/24 -j ACCEPT'
+- iptables_raw:
+    name: custom1_rules
+    rules: |
+      -N CUSTOM1
+      -A CUSTOM1 -s 192.168.0.0/24 -j ACCEPT
 
 # Reset all IPv4 iptables rules in all tables and allow all traffic
 - iptables_raw:
-    name=*
-    table=*
-    state=absent
+    name: '*'
+    table: '*'
+    state: absent
 '''
 
 RETURN = '''
@@ -226,6 +228,11 @@ class Iptables:
 
     # Key used for unmanaged rules
     UNMANAGED_RULES_KEY_NAME = '$unmanaged_rules$'
+
+    # Only allow alphanumeric characters, underscore or a space for now. We
+    # don't want to have problems while parsing comments using regular
+    # expressions.
+    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ '
 
     module = None
 
@@ -574,7 +581,7 @@ class Iptables:
                             # Fetch the comment
                             comment = tokens[tokens.index('--comment')+1]
                             # Skip the rule if the comment starts with 'ansible[name]'
-                            if not re.match(r'ansible\[\w+\]', comment):
+                            if not re.match('ansible\[[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+\]', comment):
                                 filtered_rules.append(line)
                         except:
                             msg="Bad comment syntax for iptables rule %s" % line
@@ -853,8 +860,10 @@ def main():
         module.fail_json(msg="Parameter 'name' can only be '*' if 'state=absent'")
     if state == 'present' and table == '*':
         module.fail_json(msg="Parameter 'table' can only be '*' if 'name=*' and 'state=absent'")
-    if state == 'present' and not re.match(r'^\w+$', name):
-        module.fail_json(msg="Parameter 'name' not valid! It can only contain '[a-zA-Z0-9_]', got: '%s'" % name)
+    if state == 'present' and not name:
+        module.fail_json(msg="Parameter 'name' cannot be empty")
+    if state == 'present' and not re.match('^[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+$', name):
+        module.fail_json(msg="Parameter 'name' not valid! It can only contain alphanumeric characters, underscore or a space, got: '%s'" % name)
     if weight < 0 or weight > 99:
         module.fail_json(msg="Parameter 'weight' can be 0-99, got: %d" % weight)
     if state == 'present' and rules == '':
