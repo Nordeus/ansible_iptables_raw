@@ -323,9 +323,9 @@ class Iptables:
                 # CentOS 5 ip6tables (v1.3.x) doesn't support comments,
                 # which means it cannot be used with this module.
                 if StrictVersion(version) < StrictVersion('1.4'):
-                    Iptables.module.fail_json(msg="This module isn't compatible with ip6tables versions older than 1.4.x")
+                    Iptables.module.fail_json(msg = "This module isn't compatible with ip6tables versions older than 1.4.x")
         else:
-            Iptables.module.fail_json(msg="Could not fetch iptables version! Is iptables installed?")
+            Iptables.module.fail_json(msg = "Could not fetch iptables version! Is iptables installed?")
 
     # Read rules from the json state file and return a dict.
     def _read_state_file(self):
@@ -356,7 +356,7 @@ class Iptables:
           except IOError:
             i += 1
             time.sleep(1)
-        Iptables.module.fail_json(msg="Could not acquire lock to continue execution! Probably another instance of this module is running.")
+        Iptables.module.fail_json(msg = "Could not acquire lock to continue execution! Probably another instance of this module is running.")
 
     # Check if a table has anything to flush (to check all tables pass table='*').
     def table_needs_flush(self, table):
@@ -451,6 +451,14 @@ class Iptables:
                 return ""
         rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc = True)
         return stdout
+
+    # Splits a rule into tokens
+    def _split_rule_into_tokens(self, rule):
+        try:
+            return shlex.split(rule, comments=True)
+        except:
+            msg = "Could not parse the iptables rule:\n%s" % rule
+            Iptables.module.fail_json(msg = msg)
 
     # Removes comment lines and empty lines from rules.
     @staticmethod
@@ -574,18 +582,20 @@ class Iptables:
         for line in rules.splitlines():
             if Iptables.is_rule(line):
                 if only_unmanaged:
-                    tokens = shlex.split(line, comments=True)
+                    tokens = self._split_rule_into_tokens(line)
                     # We need to check if a rule has a comment which starts with 'ansible[name]'
                     if '--comment' in tokens:
-                        try:
+                        comment_index = tokens.index('--comment')+1
+                        if comment_index < len(tokens):
                             # Fetch the comment
-                            comment = tokens[tokens.index('--comment')+1]
+                            comment = tokens[comment_index]
                             # Skip the rule if the comment starts with 'ansible[name]'
                             if not re.match('ansible\[[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+\]', comment):
                                 filtered_rules.append(line)
-                        except:
-                            msg="Bad comment syntax for iptables rule %s" % line
-                            Iptables.module.fail_json(msg=msg)
+                        else:
+                            # Fail if there is no comment after the --comment parameter
+                            msg = "Iptables rule is missing a comment after the '--comment' parameter:\n%s" % line
+                            Iptables.module.fail_json(msg = msg)
                     # If it doesn't have comment, this means it is not managed by Ansible and we should append it.
                     else:
                         filtered_rules.append(line)
@@ -629,14 +639,19 @@ class Iptables:
         for line in rules.splitlines():
             # Extract rules only since we cannot add comments to custom chains.
             if Iptables.is_rule(line):
-                tokens = shlex.split(line, comments=True)
+                tokens = self._split_rule_into_tokens(line)
                 if '--comment' in tokens:
                     # If there is a comment parameter, we need to prepand 'ansible[name]: '.
-                    comment_index = tokens.index('--comment') + 1
-                    # We need to remove double quotes from comments, since there
-                    # is an incompatiblity with older iptables versions
-                    comment_text = tokens[comment_index].replace('"', '')
-                    tokens[comment_index] = 'ansible[' + name + ']: ' + comment_text
+                    comment_index = tokens.index('--comment')+1
+                    if comment_index < len(tokens):
+                        # We need to remove double quotes from comments, since there
+                        # is an incompatiblity with older iptables versions
+                        comment_text = tokens[comment_index].replace('"', '')
+                        tokens[comment_index] = 'ansible[' + name + ']: ' + comment_text
+                    else:
+                        # Fail if there is no comment after the --comment parameter
+                        msg = "Iptables rule is missing a comment after the '--comment' parameter:\n%s" % line
+                        Iptables.module.fail_json(msg = msg)
                 else:
                     # If comment doesn't exist, we add a comment 'ansible[name]'
                     tokens += [ '-m', 'comment', '--comment', 'ansible[' + name + ']' ]
@@ -730,16 +745,20 @@ class Iptables:
     # Check if there are bad lines in the specified rules.
     def _fail_on_bad_rules(self, rules, table):
         for line in rules.splitlines():
-            tokens = shlex.split(line, comments=True)
+            tokens = self._split_rule_into_tokens(line)
             if '-t' in tokens or '--table' in tokens:
-                msg="Iptables rules cannot contain '-t/--table' parameter. You should use the 'table' parameter of the module to set rules for a specific table."
-                Iptables.module.fail_json(msg=msg)
+                msg = "Iptables rules cannot contain '-t/--table' parameter. You should use the 'table' parameter of the module to set rules for a specific table."
+                Iptables.module.fail_json(msg = msg)
+            # Fail if the parameter --comment doesn't have a comment after
+            if '--comment' in tokens and len(tokens) <= tokens.index('--comment')+1:
+                msg = "Iptables rule is missing a comment after the '--comment' parameter:\n%s" % line
+                Iptables.module.fail_json(msg = msg)
             if not (Iptables.is_rule(line) \
                     or Iptables.is_custom_chain(line, table) \
                     or Iptables.is_default_chain(line, table) \
                     or Iptables.is_comment(line)):
-                msg="Bad iptables rule '%s'! You can only use -A/--append, -N/--new-chain and -P/--policy to specify rules." % line
-                Iptables.module.fail_json(msg=msg)
+                msg = "Bad iptables rule '%s'! You can only use -A/--append, -N/--new-chain and -P/--policy to specify rules." % line
+                Iptables.module.fail_json(msg = msg)
 
     # Write rules to dest path.
     def _write_rules_to_file(self, rules, dest):
@@ -798,10 +817,10 @@ class Iptables:
                 dump_contents_file = open(dump_path, 'r')
                 dump_contents = dump_contents_file.read()
                 dump_contents_file.close()
-                msg="There is a problem with the iptables rules:" + '\n\nError message:\n' + stderr + '\nGenerated rules:\n#######\n' + dump_contents + '#####'
+                msg = "There is a problem with the iptables rules:" + '\n\nError message:\n' + stderr + '\nGenerated rules:\n#######\n' + dump_contents + '#####'
             else:
-                msg="Could not load iptables rules:\n\n" + ipt_load_stderr
-            Iptables.module.fail_json(msg=msg)
+                msg = "Could not load iptables rules:\n\n" + ipt_load_stderr
+            Iptables.module.fail_json(msg = msg)
         self._refresh_active_rules(table)
 
     # Flush one or all tables (to flush all tables pass table='*').
@@ -864,17 +883,17 @@ def main():
 
     # Check additional parameter requirements
     if state == 'present' and name == '*':
-        module.fail_json(msg="Parameter 'name' can only be '*' if 'state=absent'")
+        module.fail_json(msg = "Parameter 'name' can only be '*' if 'state=absent'")
     if state == 'present' and table == '*':
-        module.fail_json(msg="Parameter 'table' can only be '*' if 'name=*' and 'state=absent'")
+        module.fail_json(msg = "Parameter 'table' can only be '*' if 'name=*' and 'state=absent'")
     if state == 'present' and not name:
-        module.fail_json(msg="Parameter 'name' cannot be empty")
+        module.fail_json(msg = "Parameter 'name' cannot be empty")
     if state == 'present' and not re.match('^[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+$', name):
-        module.fail_json(msg="Parameter 'name' not valid! It can only contain alphanumeric characters, underscore or a space, got: '%s'" % name)
+        module.fail_json(msg = "Parameter 'name' not valid! It can only contain alphanumeric characters, underscore or a space, got: '%s'" % name)
     if weight < 0 or weight > 99:
-        module.fail_json(msg="Parameter 'weight' can be 0-99, got: %d" % weight)
+        module.fail_json(msg = "Parameter 'weight' can be 0-99, got: %d" % weight)
     if state == 'present' and rules == '':
-        module.fail_json(msg="Parameter 'rules' cannot be empty when 'state=present'")
+        module.fail_json(msg = "Parameter 'rules' cannot be empty when 'state=present'")
 
     # Flush rules of one or all tables
     if state == 'absent' and name == '*':
