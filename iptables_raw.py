@@ -25,7 +25,7 @@ DOCUMENTATION = '''
 ---
 module: iptables_raw
 short_description: Manage iptables rules
-version_added: "2.2"
+version_added: "2.3"
 description:
   - Add/remove iptables rules while keeping state.
 options:
