@@ -47,20 +47,30 @@ options:
     choices: ["4", "6"]
   keep_unmanaged:
     description:
-      - If set to C(yes) keeps active iptables (unmanaged) rules for the target C(table) and gives them C(weight=90). This means these rules will be ordered after most of the rules,
-      - since default priority is 40, so they shouldn't be able to block any allow rules. If set to C(no) deletes all rules which are not set by this module.
-      - "WARNING: Be very careful when running C(keep_unmanaged=no) for the first time, since if you don't specify correct rules, you can block yourself out of the managed host."
+      - If set to C(yes) keeps active iptables (unmanaged) rules for the target
+        C(table) and gives them C(weight=90). This means these rules will be
+        ordered after most of the rules, since default priority is 40, so they
+        shouldn't be able to block any allow rules. If set to C(no) deletes all
+        rules which are not set by this module.
+      - "WARNING: Be very careful when running C(keep_unmanaged=no) for the
+        first time, since if you don't specify correct rules, you can block
+        yourself out of the managed host."
     required: false
     choices: ["yes", "no"]
     default: "yes"
   name:
     description:
-      - Name that will be used as an identifier for these rules. It can contain alphanumeric characters, underscore or a space; has to be UNIQUE for a specified C(table). You can also pass C(name=*) with C(state=absent) to flush all rules in the selected table, or even all tables with C(table=*).
+      - Name that will be used as an identifier for these rules. It can contain
+        alphanumeric characters, underscore or a space; has to be UNIQUE for a
+        specified C(table). You can also pass C(name=*) with C(state=absent) to
+        flush all rules in the selected table, or even all tables with
+        C(table=*).
     required: true
   rules:
     description:
       - The rules that we want to add. Accepts multiline values.
-      - "Note: You can only use C(-A)/C(--append), C(-N)/C(--new-chain), and C(-P)/C(--policy) to specify rules."
+      - "Note: You can only use C(-A)/C(--append), C(-N)/C(--new-chain), and
+        C(-P)/C(--policy) to specify rules."
     required: false
   state:
     description:
@@ -70,20 +80,28 @@ options:
     default: present
   table:
     description:
-      - The table this rule applies to. You can specify C(table=*) only with with C(name=*) and C(state=absent) to flush all rules in all tables.
+      - The table this rule applies to. You can specify C(table=*) only with
+        with C(name=*) and C(state=absent) to flush all rules in all tables.
     choices: ["filter", "nat", "mangle", "raw", "security", "*"]
     required: false
     default: filter
   weight:
     description:
-      - Determines the order of the rules. Lower C(weight) means higher priority. Supported range is C(0 - 99)
+      - Determines the order of the rules. Lower C(weight) means higher
+        priority. Supported range is C(0 - 99)
     choices: ["0 - 99"]
     required: false
     default: 40
 notes:
   - Requires C(iptables) package.
-  - "Depending on the distribution, iptables rules are saved in different locations, so that they can be loaded on boot. Red Hat distributions (RHEL, CentOS, etc): C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables); Debian distributions (Debian, Ubuntu, etc): C(/etc/iptables/rules.v4) and C(/etc/iptables/rules.v6) (needs C(iptables-persistent) package); other distributions: C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables)."
-  - This module saves state in C(/etc/ansible-iptables) directory, so don't modify this directory!
+  - "Depending on the distribution, iptables rules are saved in different
+    locations, so that they can be loaded on boot. Red Hat distributions (RHEL,
+    CentOS, etc): C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables);
+    Debian distributions (Debian, Ubuntu, etc): C(/etc/iptables/rules.v4) and
+    C(/etc/iptables/rules.v6) (needs C(iptables-persistent) package); other
+    distributions: C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables)."
+  - This module saves state in C(/etc/ansible-iptables) directory, so don't
+    modify this directory!
 author:
   - "Strahinja Kustudic (@kustodian)"
   - "Damir Markovic (@damirda)"
@@ -178,7 +196,8 @@ keep_unmanaged:
     sample: True
 '''
 
-import time, fcntl
+import time
+import fcntl
 
 try:
     from collections import defaultdict
@@ -214,7 +233,7 @@ def generate_diff(dump_old, dump_new):
 
 
 def compare_dictionaries(dict1, dict2):
-    if dict1 == None or dict2 == None:
+    if dict1 is None or dict2 is None:
         return False
     if not (isinstance(dict1, dict) and isinstance(dict2, dict)):
         return False
@@ -373,13 +392,14 @@ class Iptables:
         i = 0
         f = open(lock_file, 'w+')
         while i < wait_for_seconds:
-          try:
-            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return
-          except IOError:
-            i += 1
-            time.sleep(1)
-        Iptables.module.fail_json(msg = "Could not acquire lock to continue execution! Probably another instance of this module is running.")
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return
+            except IOError:
+                i += 1
+                time.sleep(1)
+        Iptables.module.fail_json(msg = "Could not acquire lock to continue execution! "\
+                                        "Probably another instance of this module is running.")
 
     # Check if a table has anything to flush (to check all tables pass table='*').
     def table_needs_flush(self, table):
@@ -497,10 +517,11 @@ class Iptables:
     @staticmethod
     def is_custom_chain(line, table):
         default_chains = Iptables.DEFAULT_CHAINS[table]
-        if re.match(r'\s*(:|(-N|--new-chain)\s+)[^\s]+', line) and not re.match(r'\s*(:|(-N|--new-chain)\s+)\b(' + '|'.join(default_chains) + r')\b', line):
-           return True
+        if re.match(r'\s*(:|(-N|--new-chain)\s+)[^\s]+', line) \
+           and not re.match(r'\s*(:|(-N|--new-chain)\s+)\b(' + '|'.join(default_chains) + r')\b', line):
+            return True
         else:
-           return False
+            return False
 
     # Checks if the line is a default chain of an iptables table.
     @staticmethod
@@ -524,17 +545,17 @@ class Iptables:
     @staticmethod
     def is_comment(line):
         if re.match(r'\s*#', line):
-           return True
+            return True
         else:
-           return False
+            return False
 
     # Checks if a line is empty.
     @staticmethod
     def is_empty_line(line):
         if re.match(r'^$', line.strip()):
-           return True
+            return True
         else:
-           return False
+            return False
 
     # Return name of custom chain from the rule.
     def _get_custom_chain_name(self, line, table):
@@ -735,11 +756,13 @@ class Iptables:
         custom_chains_list = list(filter(None, custom_chains_list))
         default_chain_policies = list(filter(None, default_chain_policies))
         if default_chain_policies:
-            # Since iptables-restore applies the last chain policy it reads, we have to reverse the order of chain policies
-            # so that those with the lowest weight (higher priority) are read last.
+            # Since iptables-restore applies the last chain policy it reads, we
+            # have to reverse the order of chain policies so that those with
+            # the lowest weight (higher priority) are read last.
             generated_rules += '\n'.join(reversed(default_chain_policies)) + '\n'
         if custom_chains_list:
-            # We remove duplicate custom chains so that iptables-restore doesn't fail because of that.
+            # We remove duplicate custom chains so that iptables-restore
+            # doesn't fail because of that.
             generated_rules += self._remove_duplicate_custom_chains('\n'.join(sorted(custom_chains_list)), table) + '\n'
         if rules_list:
             generated_rules += '\n'.join(rules_list) + '\n'
@@ -770,7 +793,9 @@ class Iptables:
         for line in rules.splitlines():
             tokens = self._split_rule_into_tokens(line)
             if '-t' in tokens or '--table' in tokens:
-                msg = "Iptables rules cannot contain '-t/--table' parameter. You should use the 'table' parameter of the module to set rules for a specific table."
+                msg = ("Iptables rules cannot contain '-t/--table' parameter. "
+                       "You should use the 'table' parameter of the module to set rules "
+                       "for a specific table.")
                 Iptables.module.fail_json(msg = msg)
             # Fail if the parameter --comment doesn't have a comment after
             if '--comment' in tokens and len(tokens) <= tokens.index('--comment')+1:
@@ -780,7 +805,8 @@ class Iptables:
                     or Iptables.is_custom_chain(line, table) \
                     or Iptables.is_default_chain(line, table) \
                     or Iptables.is_comment(line)):
-                msg = "Bad iptables rule '%s'! You can only use -A/--append, -N/--new-chain and -P/--policy to specify rules." % line
+                msg = ("Bad iptables rule '%s'! You can only use -A/--append, -N/--new-chain "
+                       "and -P/--policy to specify rules." % line)
                 Iptables.module.fail_json(msg = msg)
 
     # Write rules to dest path.
@@ -840,7 +866,11 @@ class Iptables:
                 dump_contents_file = open(dump_path, 'r')
                 dump_contents = dump_contents_file.read()
                 dump_contents_file.close()
-                msg = "There is a problem with the iptables rules:" + '\n\nError message:\n' + stderr + '\nGenerated rules:\n#######\n' + dump_contents + '#####'
+                msg = "There is a problem with the iptables rules:" \
+                      + '\n\nError message:\n' \
+                      + stderr \
+                      + '\nGenerated rules:\n#######\n' \
+                      + dump_contents + '#####'
             else:
                 msg = "Could not load iptables rules:\n\n" + ipt_load_stderr
             Iptables.module.fail_json(msg = msg)
@@ -893,7 +923,8 @@ def main():
     backup     = module.params['backup']
     keep_unmanaged     = module.params['keep_unmanaged']
 
-    kw = dict(state=state, name=name, rules=rules, weight=weight, ipversion=ipversion, table=table, backup=backup, keep_unmanaged=keep_unmanaged)
+    kw = dict(state=state, name=name, rules=rules, weight=weight, ipversion=ipversion, \
+              table=table, backup=backup, keep_unmanaged=keep_unmanaged)
 
     iptables = Iptables(module, ipversion)
 
@@ -912,7 +943,8 @@ def main():
     if state == 'present' and not name:
         module.fail_json(msg = "Parameter 'name' cannot be empty")
     if state == 'present' and not re.match('^[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+$', name):
-        module.fail_json(msg = "Parameter 'name' not valid! It can only contain alphanumeric characters, underscore or a space, got: '%s'" % name)
+        module.fail_json(msg = "Parameter 'name' not valid! It can only contain alphanumeric characters, "\
+                               "underscore or a space, got: '%s'" % name)
     if weight < 0 or weight > 99:
         module.fail_json(msg = "Parameter 'weight' can be 0-99, got: %d" % weight)
     if state == 'present' and rules == '':
@@ -971,7 +1003,8 @@ def main():
                     kw['diff'] = generate_diff(table_rules_old, table_rules_new)
                 else:
                     # TODO: Update this comment to be better.
-                    kw['diff'] = { 'prepared': "System rules were not changed (e.g. rule weight changed, redundant rule, etc)" }
+                    kw['diff'] = { 'prepared': "System rules were not changed (e.g. rule "\
+                                               "weight changed, redundant rule, etc)" }
         else:
             # We need to fetch active table dump before we apply new rules
             # since we will need them to generate a diff.
@@ -993,10 +1026,12 @@ def main():
                     kw['diff'] = generate_diff(table_active_rules, table_active_rules_new)
                 else:
                     # TODO: Update this comment to be better.
-                    kw['diff'] = { 'prepared': "System rules were not changed (e.g. rule weight changed, redundant rule, etc)" }
+                    kw['diff'] = { 'prepared': "System rules were not changed (e.g. rule "\
+                                               "weight changed, redundant rule, etc)" }
 
     kw['changed'] = changed
     module.exit_json(**kw)
+
 
 # import module snippets
 from ansible.module_utils.basic import *
