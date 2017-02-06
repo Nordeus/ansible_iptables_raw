@@ -210,26 +210,22 @@ def generate_diff(dump_old, dump_new):
 
 
 def compare_dictionaries(dict1, dict2):
-     if dict1 == None or dict2 == None:
-         return False
-
-     if type(dict1) is not dict or type(dict2) is not dict:
-         return False
-
-     shared_keys = set(dict2.keys()) & set(dict2.keys())
-
-     if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
-         return False
-
-
-     dicts_are_equal = True
-     for key in dict1.keys():
-         if type(dict1[key]) is dict:
-             dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key],dict2[key])
-         else:
-             dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
-
-     return dicts_are_equal
+    if dict1 == None or dict2 == None:
+        return False
+    if not (isinstance(dict1, dict) and isinstance(dict2, dict)):
+        return False
+    shared_keys = set(dict2.keys()) & set(dict2.keys())
+    if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
+        return False
+    dicts_are_equal = True
+    for key in dict1.keys():
+        if isinstance(dict1[key], dict):
+            dicts_are_equal = dicts_are_equal and compare_dictionaries(dict1[key], dict2[key])
+        else:
+            dicts_are_equal = dicts_are_equal and (dict1[key] == dict2[key])
+        if not dicts_are_equal:
+            break
+    return dicts_are_equal
 
 
 class Iptables:
@@ -762,7 +758,7 @@ class Iptables:
         unmanaged_chains_and_rules.append(self._filter_custom_chains(active_rules, table, only_unmanaged=True))
         unmanaged_chains_and_rules.append(self._filter_rules(active_rules, table, only_unmanaged=True))
         # Clean items which are empty strings
-        unmanaged_chains_and_rules = filter(None, unmanaged_chains_and_rules)
+        unmanaged_chains_and_rules = list(filter(None, unmanaged_chains_and_rules))
         self._set_unmanaged_rules(table, '\n'.join(unmanaged_chains_and_rules))
 
     # Check if there are bad lines in the specified rules.
