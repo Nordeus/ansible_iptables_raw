@@ -196,8 +196,15 @@ keep_unmanaged:
     sample: True
 '''
 
+from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.basic import json
+
 import time
 import fcntl
+import re
+import shlex
+import os
+import tempfile
 
 try:
     from collections import defaultdict
@@ -611,7 +618,6 @@ class Iptables:
     # Returns lines with default chain policies.
     def _filter_default_chain_policies(self, rules, table):
         chains = []
-        default_chains = Iptables.DEFAULT_CHAINS[table]
         for line in rules.splitlines():
             if Iptables.is_default_chain(line, table):
                 chains.append(line)
@@ -872,7 +878,7 @@ class Iptables:
                       + '\nGenerated rules:\n#######\n' \
                       + dump_contents + '#####'
             else:
-                msg = "Could not load iptables rules:\n\n" + ipt_load_stderr
+                msg = "Could not load iptables rules:\n\n" + stderr
             Iptables.module.fail_json(msg = msg)
         self._refresh_active_rules(table)
 
@@ -1032,9 +1038,6 @@ def main():
     kw['changed'] = changed
     module.exit_json(**kw)
 
-
-# import module snippets
-from ansible.module_utils.basic import *
 
 if __name__ == '__main__':
     main()
