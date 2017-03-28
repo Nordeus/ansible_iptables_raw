@@ -1,0 +1,31 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+system('
+  if test ! -e library/iptables_raw.py ; then
+    mkdir -p library;
+    cd library;
+    ln -s ../../iptables_raw.py;
+  fi
+')
+
+Vagrant.configure(2) do |config|
+  config.vbguest.auto_update = false
+
+  # Configuration deployment
+  config.vm.provision "preinstall", type: "shell", inline: "/vagrant/vagrant_preinstall.sh"
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "iptables.yml"
+    ansible.raw_arguments = [
+      "--become-user=root"
+    ]
+  end
+  config.vm.define 'debian' do |debian|
+    debian.vm.hostname = "debian.local"
+    debian.vm.box = "debian/jessie64"
+
+  end
+  config.vm.define 'centos' do |centos|
+    centos.vm.hostname = "centos.local"
+    centos.vm.box = "centos/7"
+  end
+end
