@@ -21,15 +21,15 @@ You should have received a copy of the GNU General Public License
 along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-ANSIBLE_METADATA = { 'status': ['preview'],
-                     'supported_by': 'community',
-                     'version': '1.0' }
+ANSIBLE_METADATA = {'status': ['preview'],
+                    'supported_by': 'community',
+                    'metadata_version': '1.0'}
 
 DOCUMENTATION = '''
 ---
 module: iptables_raw
 short_description: Manage iptables rules
-version_added: "2.3"
+version_added: "2.4"
 description:
   - Add/remove iptables rules while keeping state.
 options:
@@ -61,10 +61,10 @@ options:
   name:
     description:
       - Name that will be used as an identifier for these rules. It can contain
-        alphanumeric characters, underscore or a space; has to be UNIQUE for a
-        specified C(table). You can also pass C(name=*) with C(state=absent) to
-        flush all rules in the selected table, or even all tables with
-        C(table=*).
+        alphanumeric characters, underscore, hyphen, or a space; has to be
+        UNIQUE for a specified C(table). You can also pass C(name=*) with
+        C(state=absent) to flush all rules in the selected table, or even all
+        tables with C(table=*).
     required: true
   rules:
     description:
@@ -245,7 +245,7 @@ def compare_dictionaries(dict1, dict2):
     if not (isinstance(dict1, dict) and isinstance(dict2, dict)):
         return False
     shared_keys = set(dict2.keys()) & set(dict2.keys())
-    if not ( len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
+    if not (len(shared_keys) == len(dict1.keys()) and len(shared_keys) == len(dict2.keys())):
         return False
     dicts_are_equal = True
     for key in dict1.keys():
@@ -262,11 +262,11 @@ class Iptables:
 
     # Default chains for each table
     DEFAULT_CHAINS = {
-        'filter': [ 'INPUT', 'FORWARD', 'OUTPUT' ],
-        'raw': [ 'PREROUTING', 'OUTPUT' ],
-        'nat': [ 'PREROUTING', 'INPUT', 'OUTPUT', 'POSTROUTING' ],
-        'mangle': [ 'PREROUTING', 'INPUT', 'FORWARD', 'OUTPUT', 'POSTROUTING' ],
-        'security': [ 'INPUT', 'FORWARD', 'OUTPUT' ]
+        'filter': ['INPUT', 'FORWARD', 'OUTPUT'],
+        'raw': ['PREROUTING', 'OUTPUT'],
+        'nat': ['PREROUTING', 'INPUT', 'OUTPUT', 'POSTROUTING'],
+        'mangle': ['PREROUTING', 'INPUT', 'FORWARD', 'OUTPUT', 'POSTROUTING'],
+        'security': ['INPUT', 'FORWARD', 'OUTPUT']
     }
 
     # List of tables
@@ -278,10 +278,10 @@ class Iptables:
     # Key used for unmanaged rules
     UNMANAGED_RULES_KEY_NAME = '$unmanaged_rules$'
 
-    # Only allow alphanumeric characters, underscore or a space for now. We
-    # don't want to have problems while parsing comments using regular
+    # Only allow alphanumeric characters, underscore, hyphen, or a space for
+    # now. We don't want to have problems while parsing comments using regular
     # expressions.
-    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ '
+    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ -'
 
     module = None
 
@@ -311,13 +311,13 @@ class Iptables:
 
     def _get_bins(self, ipversion):
         if ipversion == '4':
-            return { 'iptables': Iptables.module.get_bin_path('iptables'), \
-                     'iptables-save': Iptables.module.get_bin_path('iptables-save'), \
-                     'iptables-restore': Iptables.module.get_bin_path('iptables-restore') }
+            return {'iptables': Iptables.module.get_bin_path('iptables'),
+                    'iptables-save': Iptables.module.get_bin_path('iptables-save'),
+                    'iptables-restore': Iptables.module.get_bin_path('iptables-restore')}
         else:
-            return { 'iptables': Iptables.module.get_bin_path('ip6tables'), \
-                     'iptables-save': Iptables.module.get_bin_path('ip6tables-save'), \
-                     'iptables-restore': Iptables.module.get_bin_path('ip6tables-restore') }
+            return {'iptables': Iptables.module.get_bin_path('ip6tables'),
+                    'iptables-save': Iptables.module.get_bin_path('ip6tables-save'),
+                    'iptables-restore': Iptables.module.get_bin_path('ip6tables-restore')}
 
     def _get_iptables_names_file(self, ipversion):
         if ipversion == '4':
@@ -333,7 +333,7 @@ class Iptables:
         else:
             return []
 
-    #If /etc/debian_version exist, this means this is a debian based OS (Ubuntu, Mint, etc...)
+    # If /etc/debian_version exist, this means this is a debian based OS (Ubuntu, Mint, etc...)
     def _is_debian(self):
         return os.path.isfile('/etc/debian_version')
 
@@ -363,8 +363,8 @@ class Iptables:
     # Checks if iptables is installed and if we have a correct version.
     def _check_compatibility(self):
         from distutils.version import StrictVersion
-        cmd = [ self.bins['iptables'], '--version' ]
-        rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc = False)
+        cmd = [self.bins['iptables'], '--version']
+        rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
         if rc == 0:
             result = re.search(r'^ip6tables\s+v(\d+\.\d+)\.\d+$', stdout)
             if result:
@@ -372,9 +372,9 @@ class Iptables:
                 # CentOS 5 ip6tables (v1.3.x) doesn't support comments,
                 # which means it cannot be used with this module.
                 if StrictVersion(version) < StrictVersion('1.4'):
-                    Iptables.module.fail_json(msg = "This module isn't compatible with ip6tables versions older than 1.4.x")
+                    Iptables.module.fail_json(msg="This module isn't compatible with ip6tables versions older than 1.4.x")
         else:
-            Iptables.module.fail_json(msg = "Could not fetch iptables version! Is iptables installed?")
+            Iptables.module.fail_json(msg="Could not fetch iptables version! Is iptables installed?")
 
     # Read rules from the json state file and return a dict.
     def _read_state_file(self):
@@ -395,7 +395,7 @@ class Iptables:
 
     # Acquires lock or exits after wait_for_seconds if it cannot be acquired.
     def acquire_lock_or_exit(self, wait_for_seconds=10):
-        lock_file=self.STATE_DIR + '/.iptables.lock'
+        lock_file = self.STATE_DIR + '/.iptables.lock'
         i = 0
         f = open(lock_file, 'w+')
         while i < wait_for_seconds:
@@ -405,8 +405,8 @@ class Iptables:
             except IOError:
                 i += 1
                 time.sleep(1)
-        Iptables.module.fail_json(msg = "Could not acquire lock to continue execution! "\
-                                        "Probably another instance of this module is running.")
+        Iptables.module.fail_json(msg="Could not acquire lock to continue execution! "
+                                      "Probably another instance of this module is running.")
 
     # Check if a table has anything to flush (to check all tables pass table='*').
     def table_needs_flush(self, table):
@@ -490,16 +490,16 @@ class Iptables:
     def _get_system_active_rules(self, table):
         active_tables = self._get_list_of_active_tables()
         if table == '*':
-            cmd = [ self.bins['iptables-save'] ]
+            cmd = [self.bins['iptables-save']]
             # If there are no active tables, that means there are no rules
             if not active_tables:
                 return ""
         else:
-            cmd = [ self.bins['iptables-save'], '-t', table ]
+            cmd = [self.bins['iptables-save'], '-t', table]
             # If the table is not active, that means it has no rules
             if table not in active_tables:
                 return ""
-        rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc = True)
+        rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=True)
         return stdout
 
     # Splits a rule into tokens
@@ -508,7 +508,7 @@ class Iptables:
             return shlex.split(rule, comments=True)
         except:
             msg = "Could not parse the iptables rule:\n%s" % rule
-            Iptables.module.fail_json(msg = msg)
+            Iptables.module.fail_json(msg=msg)
 
     # Removes comment lines and empty lines from rules.
     @staticmethod
@@ -635,7 +635,7 @@ class Iptables:
                     tokens = self._split_rule_into_tokens(line)
                     # We need to check if a rule has a comment which starts with 'ansible[name]'
                     if '--comment' in tokens:
-                        comment_index = tokens.index('--comment')+1
+                        comment_index = tokens.index('--comment') + 1
                         if comment_index < len(tokens):
                             # Fetch the comment
                             comment = tokens[comment_index]
@@ -645,7 +645,7 @@ class Iptables:
                         else:
                             # Fail if there is no comment after the --comment parameter
                             msg = "Iptables rule is missing a comment after the '--comment' parameter:\n%s" % line
-                            Iptables.module.fail_json(msg = msg)
+                            Iptables.module.fail_json(msg=msg)
                     # If it doesn't have comment, this means it is not managed by Ansible and we should append it.
                     else:
                         filtered_rules.append(line)
@@ -692,7 +692,7 @@ class Iptables:
                 tokens = self._split_rule_into_tokens(line)
                 if '--comment' in tokens:
                     # If there is a comment parameter, we need to prepand 'ansible[name]: '.
-                    comment_index = tokens.index('--comment')+1
+                    comment_index = tokens.index('--comment') + 1
                     if comment_index < len(tokens):
                         # We need to remove double quotes from comments, since there
                         # is an incompatiblity with older iptables versions
@@ -701,12 +701,12 @@ class Iptables:
                     else:
                         # Fail if there is no comment after the --comment parameter
                         msg = "Iptables rule is missing a comment after the '--comment' parameter:\n%s" % line
-                        Iptables.module.fail_json(msg = msg)
+                        Iptables.module.fail_json(msg=msg)
                 else:
                     # If comment doesn't exist, we add a comment 'ansible[name]'
-                    tokens += [ '-m', 'comment', '--comment', 'ansible[' + name + ']' ]
+                    tokens += ['-m', 'comment', '--comment', 'ansible[' + name + ']']
                 # Escape and quote tokens in case they have spaces
-                tokens = [ self._escape_and_quote_string(x) for x in tokens ]
+                tokens = [self._escape_and_quote_string(x) for x in tokens]
                 commented_lines.append(" ".join(tokens))
             # Otherwise it's a chain, and we should just return it.
             else:
@@ -727,7 +727,7 @@ class Iptables:
         if prepend_ansible_comment:
             self.state_dict[table]['rules_dict'][name] = {'weight': weight, 'rules': self._prepend_ansible_comment(rules, name)}
         else:
-            self.state_dict[table]['rules_dict'][name] = {'weight': weight, 'rules': rules }
+            self.state_dict[table]['rules_dict'][name] = {'weight': weight, 'rules': rules}
 
     # Remove table rule from the state_dict.
     def remove_table_rule(self, table, name):
@@ -802,18 +802,18 @@ class Iptables:
                 msg = ("Iptables rules cannot contain '-t/--table' parameter. "
                        "You should use the 'table' parameter of the module to set rules "
                        "for a specific table.")
-                Iptables.module.fail_json(msg = msg)
+                Iptables.module.fail_json(msg=msg)
             # Fail if the parameter --comment doesn't have a comment after
-            if '--comment' in tokens and len(tokens) <= tokens.index('--comment')+1:
+            if '--comment' in tokens and len(tokens) <= tokens.index('--comment') + 1:
                 msg = "Iptables rule is missing a comment after the '--comment' parameter:\n%s" % line
-                Iptables.module.fail_json(msg = msg)
-            if not (Iptables.is_rule(line) \
-                    or Iptables.is_custom_chain(line, table) \
-                    or Iptables.is_default_chain(line, table) \
-                    or Iptables.is_comment(line)):
+                Iptables.module.fail_json(msg=msg)
+            if not (Iptables.is_rule(line) or
+                    Iptables.is_custom_chain(line, table) or
+                    Iptables.is_default_chain(line, table) or
+                    Iptables.is_comment(line)):
                 msg = ("Bad iptables rule '%s'! You can only use -A/--append, -N/--new-chain "
                        "and -P/--policy to specify rules." % line)
-                Iptables.module.fail_json(msg = msg)
+                Iptables.module.fail_json(msg=msg)
 
     # Write rules to dest path.
     def _write_rules_to_file(self, rules, dest):
@@ -823,7 +823,7 @@ class Iptables:
     # Write text to a temp file and return path to that file.
     def _write_to_temp_file(self, text):
         fd, path = tempfile.mkstemp()
-        Iptables.module.add_cleanup_file(path) # add file for cleanup later
+        Iptables.module.add_cleanup_file(path)   # add file for cleanup later
         tmp = os.fdopen(fd, 'w')
         tmp.write(text)
         tmp.close()
@@ -838,14 +838,14 @@ class Iptables:
     def _system_flush_single_table_rules(self, table):
         # Set all default chain policies to ACCEPT.
         for chain in Iptables.DEFAULT_CHAINS[table]:
-            cmd = [ self.bins['iptables'], '-t', table, '-P', chain, 'ACCEPT' ]
-            Iptables.module.run_command(cmd, check_rc = True)
+            cmd = [self.bins['iptables'], '-t', table, '-P', chain, 'ACCEPT']
+            Iptables.module.run_command(cmd, check_rc=True)
         # Then flush all rules.
-        cmd = [ self.bins['iptables'], '-t', table, '-F' ]
-        Iptables.module.run_command(cmd, check_rc = True)
+        cmd = [self.bins['iptables'], '-t', table, '-F']
+        Iptables.module.run_command(cmd, check_rc=True)
         # And delete custom chains.
-        cmd = [ self.bins['iptables'], '-t', table, '-X' ]
-        Iptables.module.run_command(cmd, check_rc = True)
+        cmd = [self.bins['iptables'], '-t', table, '-X']
+        Iptables.module.run_command(cmd, check_rc=True)
         # Update active rules in the object.
         self._refresh_active_rules(table)
 
@@ -863,10 +863,10 @@ class Iptables:
     def system_apply_table_rules(self, table, test=False):
         dump_path = self._write_to_temp_file(self.get_table_rules(table))
         if test:
-            cmd = [ self.bins['iptables-restore'], '-t', dump_path ]
+            cmd = [self.bins['iptables-restore'], '-t', dump_path]
         else:
-            cmd = [ self.bins['iptables-restore'], dump_path ]
-        rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc = False)
+            cmd = [self.bins['iptables-restore'], dump_path]
+        rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
         if rc != 0:
             if test:
                 dump_contents_file = open(dump_path, 'r')
@@ -879,7 +879,7 @@ class Iptables:
                       + dump_contents + '#####'
             else:
                 msg = "Could not load iptables rules:\n\n" + stderr
-            Iptables.module.fail_json(msg = msg)
+            Iptables.module.fail_json(msg=msg)
         self._refresh_active_rules(table)
 
     # Flush one or all tables (to flush all tables pass table='*').
@@ -905,31 +905,31 @@ class Iptables:
 def main():
 
     module = AnsibleModule(
-        argument_spec = dict(
-            ipversion    = dict(required=False, choices=["4", "6"], type='str', default="4"),
-            state        = dict(required=False, choices=['present', 'absent'], default='present', type='str'),
-            weight       = dict(required=False, type='int', default=40),
-            name         = dict(required=True, type='str'),
-            table        = dict(required=False, choices=Iptables.TABLES + [ '*' ], default="filter", type='str'),
-            rules        = dict(required=False, type='str', default=""),
-            backup       = dict(required=False, type='bool', default=False),
-            keep_unmanaged       = dict(required=False, type='bool', default=True ),
+        argument_spec=dict(
+            ipversion=dict(required=False, choices=["4", "6"], type='str', default="4"),
+            state=dict(required=False, choices=['present', 'absent'], default='present', type='str'),
+            weight=dict(required=False, type='int', default=40),
+            name=dict(required=True, type='str'),
+            table=dict(required=False, choices=Iptables.TABLES + ['*'], default="filter", type='str'),
+            rules=dict(required=False, type='str', default=""),
+            backup=dict(required=False, type='bool', default=False),
+            keep_unmanaged=dict(required=False, type='bool', default=True),
         ),
-        supports_check_mode = True,
+        supports_check_mode=True,
     )
 
     check_mode = module.check_mode
-    changed    = False
-    ipversion  = module.params['ipversion']
-    state      = module.params['state']
-    weight     = module.params['weight']
-    name       = module.params['name']
-    table      = module.params['table']
-    rules      = module.params['rules']
-    backup     = module.params['backup']
-    keep_unmanaged     = module.params['keep_unmanaged']
+    changed = False
+    ipversion = module.params['ipversion']
+    state = module.params['state']
+    weight = module.params['weight']
+    name = module.params['name']
+    table = module.params['table']
+    rules = module.params['rules']
+    backup = module.params['backup']
+    keep_unmanaged = module.params['keep_unmanaged']
 
-    kw = dict(state=state, name=name, rules=rules, weight=weight, ipversion=ipversion, \
+    kw = dict(state=state, name=name, rules=rules, weight=weight, ipversion=ipversion,
               table=table, backup=backup, keep_unmanaged=keep_unmanaged)
 
     iptables = Iptables(module, ipversion)
@@ -943,18 +943,18 @@ def main():
 
     # Check additional parameter requirements
     if state == 'present' and name == '*':
-        module.fail_json(msg = "Parameter 'name' can only be '*' if 'state=absent'")
+        module.fail_json(msg="Parameter 'name' can only be '*' if 'state=absent'")
     if state == 'present' and table == '*':
-        module.fail_json(msg = "Parameter 'table' can only be '*' if 'name=*' and 'state=absent'")
+        module.fail_json(msg="Parameter 'table' can only be '*' if 'name=*' and 'state=absent'")
     if state == 'present' and not name:
-        module.fail_json(msg = "Parameter 'name' cannot be empty")
+        module.fail_json(msg="Parameter 'name' cannot be empty")
     if state == 'present' and not re.match('^[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+$', name):
-        module.fail_json(msg = "Parameter 'name' not valid! It can only contain alphanumeric characters, "\
-                               "underscore or a space, got: '%s'" % name)
+        module.fail_json(msg="Parameter 'name' not valid! It can only contain alphanumeric characters, "
+                             "underscore, hyphen, or a space, got: '%s'" % name)
     if weight < 0 or weight > 99:
-        module.fail_json(msg = "Parameter 'weight' can be 0-99, got: %d" % weight)
+        module.fail_json(msg="Parameter 'weight' can be 0-99, got: %d" % weight)
     if state == 'present' and rules == '':
-        module.fail_json(msg = "Parameter 'rules' cannot be empty when 'state=present'")
+        module.fail_json(msg="Parameter 'rules' cannot be empty when 'state=present'")
 
     # Flush rules of one or all tables
     if state == 'absent' and name == '*':
@@ -1009,8 +1009,8 @@ def main():
                     kw['diff'] = generate_diff(table_rules_old, table_rules_new)
                 else:
                     # TODO: Update this comment to be better.
-                    kw['diff'] = { 'prepared': "System rules were not changed (e.g. rule "\
-                                               "weight changed, redundant rule, etc)" }
+                    kw['diff'] = {'prepared': "System rules were not changed (e.g. rule "
+                                              "weight changed, redundant rule, etc)"}
         else:
             # We need to fetch active table dump before we apply new rules
             # since we will need them to generate a diff.
@@ -1032,8 +1032,8 @@ def main():
                     kw['diff'] = generate_diff(table_active_rules, table_active_rules_new)
                 else:
                     # TODO: Update this comment to be better.
-                    kw['diff'] = { 'prepared': "System rules were not changed (e.g. rule "\
-                                               "weight changed, redundant rule, etc)" }
+                    kw['diff'] = {'prepared': "System rules were not changed (e.g. rule "
+                                              "weight changed, redundant rule, etc)"}
 
     kw['changed'] = changed
     module.exit_json(**kw)
