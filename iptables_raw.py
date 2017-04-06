@@ -99,7 +99,7 @@ notes:
     locations, so that they can be loaded on boot. Red Hat distributions (RHEL,
     CentOS, etc): C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables);
     Debian distributions (Debian, Ubuntu, etc): C(/etc/iptables/rules.v4) and
-    C(/etc/iptables/rules.v6); other distributions: C(/etc/sysconfig/iptables) 
+    C(/etc/iptables/rules.v6); other distributions: C(/etc/sysconfig/iptables)
     and C(/etc/sysconfig/ip6tables)."
   - This module saves state in C(/etc/ansible-iptables) directory, so don't
     modify this directory!
