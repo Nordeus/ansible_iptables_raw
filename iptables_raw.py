@@ -93,13 +93,14 @@ options:
     required: false
     default: 40
 notes:
-  - Requires C(iptables) package.
+  - Requires C(iptables) package. Debian-based distributions additionally
+    require C(iptables-persistent).
   - "Depending on the distribution, iptables rules are saved in different
     locations, so that they can be loaded on boot. Red Hat distributions (RHEL,
     CentOS, etc): C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables);
     Debian distributions (Debian, Ubuntu, etc): C(/etc/iptables/rules.v4) and
-    C(/etc/iptables/rules.v6) (needs C(iptables-persistent) package); other
-    distributions: C(/etc/sysconfig/iptables) and C(/etc/sysconfig/ip6tables)."
+    C(/etc/iptables/rules.v6); other distributions: C(/etc/sysconfig/iptables) 
+    and C(/etc/sysconfig/ip6tables)."
   - This module saves state in C(/etc/ansible-iptables) directory, so don't
     modify this directory!
 author:
