@@ -279,10 +279,10 @@ class Iptables:
     # Key used for unmanaged rules
     UNMANAGED_RULES_KEY_NAME = '$unmanaged_rules$'
 
-    # Only allow alphanumeric characters, underscore, hyphen, or a space for
+    # Only allow alphanumeric characters, underscore, hyphen, dots, or a space for
     # now. We don't want to have problems while parsing comments using regular
     # expressions.
-    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ -'
+    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ -\.'
 
     module = None
 
