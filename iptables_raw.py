@@ -61,7 +61,7 @@ options:
   name:
     description:
       - Name that will be used as an identifier for these rules. It can contain
-        alphanumeric characters, underscore, hyphen, or a space; has to be
+        alphanumeric characters, underscore, hyphen, dot, or a space; has to be
         UNIQUE for a specified C(table). You can also pass C(name=*) with
         C(state=absent) to flush all rules in the selected table, or even all
         tables with C(table=*).
@@ -279,10 +279,10 @@ class Iptables:
     # Key used for unmanaged rules
     UNMANAGED_RULES_KEY_NAME = '$unmanaged_rules$'
 
-    # Only allow alphanumeric characters, underscore, hyphen, or a space for
+    # Only allow alphanumeric characters, underscore, hyphen, dots, or a space for
     # now. We don't want to have problems while parsing comments using regular
     # expressions.
-    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ -'
+    RULE_NAME_ALLOWED_CHARS = 'a-zA-Z0-9_ .-'
 
     module = None
 
