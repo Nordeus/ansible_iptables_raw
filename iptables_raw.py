@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+# Make coding more python3-ish
+from __future__ import (absolute_import, division, print_function)
+__metaclass__ = type
+
 """
 (c) 2016, Strahinja Kustudic <strahinjak@nordeus.com>
 (c) 2016, Damir Markovic <damir@damirda.com>
@@ -21,15 +25,17 @@ You should have received a copy of the GNU General Public License
 along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-ANSIBLE_METADATA = {'status': ['preview'],
-                    'supported_by': 'community',
-                    'metadata_version': '1.0'}
+ANSIBLE_METADATA = {
+    'metadata_version': '1.1',
+    'status': ['preview'],
+    'supported_by': 'community'
+}
 
 DOCUMENTATION = '''
 ---
 module: iptables_raw
 short_description: Manage iptables rules
-version_added: "2.4"
+version_added: "2.5"
 description:
   - Add/remove iptables rules while keeping state.
 options:
@@ -346,7 +352,7 @@ class Iptables:
         if self._is_debian():
             # Check if iptables-persistent packages is installed
             if not os.path.isdir('/etc/iptables'):
-                Iptables.module.fail_json(msg="This module requires 'iptables-persistent' package!");
+                Iptables.module.fail_json(msg="This module requires 'iptables-persistent' package!")
             if ipversion == '4':
                 return '/etc/iptables/rules.v4'
             else:
@@ -650,7 +656,7 @@ class Iptables:
                             # Fetch the comment
                             comment = tokens[comment_index]
                             # Skip the rule if the comment starts with 'ansible[name]'
-                            if not re.match('ansible\[[' + Iptables.RULE_NAME_ALLOWED_CHARS + ']+\]', comment):
+                            if not re.match(r'ansible\[[' + Iptables.RULE_NAME_ALLOWED_CHARS + r']+\]', comment):
                                 filtered_rules.append(line)
                         else:
                             # Fail if there is no comment after the --comment parameter
