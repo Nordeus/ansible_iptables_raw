@@ -384,8 +384,14 @@ class Iptables:
     def _read_state_file(self):
         json_str = '{}'
         if os.path.isfile(self.state_save_path):
-            json_str = open(self.state_save_path, 'r').read()
-        read_dict = defaultdict(lambda: dict(dump='', rules_dict={}), json.loads(json_str))
+            try:
+                json_str = open(self.state_save_path, 'r').read()
+            except:
+                Iptables.module.fail_json(msg="Could not read the state file '%s'!" % self.state_save_path)
+        try:
+            read_dict = defaultdict(lambda: dict(dump='', rules_dict={}), json.loads(json_str))
+        except:
+            Iptables.module.fail_json(msg="Could not parse the state file '%s'! Please manually delete it to continue." % self.state_save_path)
         return read_dict
 
     # Checks if a table exists in the state_dict.
