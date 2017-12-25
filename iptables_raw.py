@@ -343,14 +343,17 @@ class Iptables:
     # Supports Debian/Ubuntu/Mint,  '/etc/iptables/' location.
     def _get_system_save_path(self, ipversion):
         # distro detection, path setting should be added
-        if ipversion == '4':
-            if self._is_debian():
+        if self._is_debian():
+            # Check if iptables-persistent packages is installed
+            if not os.path.isdir('/etc/iptables'):
+                Iptables.module.fail_json(msg="This module requires 'iptables-persistent' package!");
+            if ipversion == '4':
                 return '/etc/iptables/rules.v4'
             else:
-                return '/etc/sysconfig/iptables'
-        else:
-            if self._is_debian():
                 return '/etc/iptables/rules.v6'
+        else:
+            if ipversion == '4':
+                return '/etc/sysconfig/iptables'
             else:
                 return '/etc/sysconfig/ip6tables'
 
