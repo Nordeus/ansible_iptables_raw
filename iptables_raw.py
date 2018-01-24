@@ -344,6 +344,10 @@ class Iptables:
     def _is_debian(self):
         return os.path.isfile('/etc/debian_version')
 
+    # If /etc/arch-release exist, this means this is an ArchLinux OS 
+    def _is_arch_linux(self):
+        return os.path.isfile('/etc/arch-release')
+
     # Get the iptables system save path.
     # Supports RHEL/CentOS '/etc/sysconfig/' location.
     # Supports Debian/Ubuntu/Mint,  '/etc/iptables/' location.
@@ -357,6 +361,11 @@ class Iptables:
                 return '/etc/iptables/rules.v4'
             else:
                 return '/etc/iptables/rules.v6'
+        elif self._is_arch_linux():
+            if ipversion == '4':
+                return '/etc/iptables/iptables.rules'
+            else:
+                return '/etc/iptables/ip6tables.rules'
         else:
             if ipversion == '4':
                 return '/etc/sysconfig/iptables'
