@@ -1,0 +1,12 @@
+---
+- hosts: all
+  become: true
+  tasks:
+      - name: Set default iptables head rules
+        iptables_raw:
+          name: iptables_test
+          weight: 10
+          keep_unmanaged: 'no'
+          state: present
+          rules: -A INPUT -j ACCEPT
+        tags: iptables
