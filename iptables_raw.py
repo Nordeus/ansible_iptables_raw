@@ -347,7 +347,7 @@ class Iptables:
     def _is_alpine(self):
         return os.path.isfile('/etc/alpine-release')
 
-    # If /etc/arch-release exist, this means this is an ArchLinux OS 
+    # If /etc/arch-release exist, this means this is an ArchLinux OS
     def _is_arch_linux(self):
         return os.path.isfile('/etc/arch-release')
 
