@@ -292,7 +292,7 @@ class Iptables:
     module = None
 
     def __init__(self, module, ipversion):
-        # test
+        # make ipversion available to all functions
         self._ipversion = ipversion
         # Create directory for json files.
         if not os.path.exists(self.STATE_DIR):
