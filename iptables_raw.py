@@ -940,7 +940,6 @@ class Iptables:
         all_active_rules = self._get_active_rules(table='*', clean=False)
         # Move iptables-save dump of all tables to the iptables_save_path
         self._write_rules_to_file(all_active_rules, self.system_save_path)
-        print('all_active_rules')
 
     # Apply table dict rules to the system.
     def system_apply_table_rules(self, table, test=False):
