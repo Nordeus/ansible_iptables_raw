@@ -327,8 +327,8 @@ class Iptables:
                     'iptables-save': Iptables.module.get_bin_path('ip6tables-save'),
                     'iptables-restore': Iptables.module.get_bin_path('ip6tables-restore'),
                     'nft': Iptables.module.get_bin_path('nft') }
-    
-    # return list of active tables 
+
+    # return list of active tables
     # detect if nftables is installed - support for nftables
     def _get_list_of_active_tables(self):
         if self.bins['nft']:
@@ -336,26 +336,28 @@ class Iptables:
             rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
             if rc == 0:
                 if self._ipversion == '4':
-                    cmd = [self.bins['nft'], 'list', 'tables', 'ip', '-j']
+                    cmd = [self.bins['nft'], '-j', 'list', 'tables', 'ip']
                     rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
                     jsonout = json.loads(stdout)
                     if rc == 0:
                         if len(jsonout['nftables']) > 0:
                             table_names = []
                             for table in jsonout['nftables']:
-                                table_names.append(table['table']['name'])
+                                if 'table' in table.keys():
+                                    table_names.append(table['table']['name'])
                             return table_names
                         else:
                             return self.TABLES
                 else:
-                    cmd = [self.bins['nft'], 'list', 'tables', 'ip6', '-j']
+                    cmd = [self.bins['nft'], '-j', 'list', 'tables', 'ip6']
                     rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
                     jsonout = json.loads(stdout)
                     if rc == 0:
                         if len(jsonout['nftables']) > 0:
                             table_names = []
                             for table in jsonout['nftables']:
-                                table_names.append(table['table']['name'])
+                                if 'table' in table.keys():
+                                    table_names.append(table['table']['name'])
                             return table_names
                         else:
                             return self.TABLES
@@ -1124,3 +1126,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
