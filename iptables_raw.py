@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 # Make coding more python3-ish
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
@@ -293,6 +292,8 @@ class Iptables:
     module = None
 
     def __init__(self, module, ipversion):
+        # make ipversion available to all functions
+        self._ipversion = ipversion
         # Create directory for json files.
         if not os.path.exists(self.STATE_DIR):
             os.makedirs(self.STATE_DIR)
@@ -302,7 +303,6 @@ class Iptables:
         self.system_save_path = self._get_system_save_path(ipversion)
         self.state_dict = self._read_state_file()
         self.bins = self._get_bins(ipversion)
-        self.iptables_names_file = self._get_iptables_names_file(ipversion)
         # Check if we have a required iptables version.
         self._check_compatibility()
         # Save active iptables rules for all tables, so that we don't
@@ -320,25 +320,64 @@ class Iptables:
         if ipversion == '4':
             return {'iptables': Iptables.module.get_bin_path('iptables'),
                     'iptables-save': Iptables.module.get_bin_path('iptables-save'),
-                    'iptables-restore': Iptables.module.get_bin_path('iptables-restore')}
+                    'iptables-restore': Iptables.module.get_bin_path('iptables-restore'),
+                    'nft': Iptables.module.get_bin_path('nft') }
         else:
             return {'iptables': Iptables.module.get_bin_path('ip6tables'),
                     'iptables-save': Iptables.module.get_bin_path('ip6tables-save'),
-                    'iptables-restore': Iptables.module.get_bin_path('ip6tables-restore')}
-
-    def _get_iptables_names_file(self, ipversion):
-        if ipversion == '4':
-            return '/proc/net/ip_tables_names'
-        else:
-            return '/proc/net/ip6_tables_names'
-
-    # Return a list of active iptables tables
+                    'iptables-restore': Iptables.module.get_bin_path('ip6tables-restore'),
+                    'nft': Iptables.module.get_bin_path('nft') }
+    
+    # return list of active tables 
+    # detect if nftables is installed - support for nftables
     def _get_list_of_active_tables(self):
-        if os.path.isfile(self.iptables_names_file):
-            table_names = open(self.iptables_names_file, 'r').read()
-            return table_names.splitlines()
+        if self.bins['nft']:
+            cmd = [self.bins['nft'], '-v']
+            rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
+            if rc == 0:
+                if self._ipversion == '4':
+                    cmd = [self.bins['nft'], 'list', 'tables', 'ip', '-j']
+                    rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
+                    jsonout = json.loads(stdout)
+                    if rc == 0:
+                        if len(jsonout['nftables']) > 0:
+                            table_names = []
+                            for table in jsonout['nftables']:
+                                table_names.append(table['table']['name'])
+                            return table_names
+                        else:
+                            return self.TABLES
+                else:
+                    cmd = [self.bins['nft'], 'list', 'tables', 'ip6', '-j']
+                    rc, stdout, stderr = Iptables.module.run_command(cmd, check_rc=False)
+                    jsonout = json.loads(stdout)
+                    if rc == 0:
+                        if len(jsonout['nftables']) > 0:
+                            table_names = []
+                            for table in jsonout['nftables']:
+                                table_names.append(table['table']['name'])
+                            return table_names
+                        else:
+                            return self.TABLES
+        # assume that no nftables is used --> netfilter fallback
         else:
-            return []
+            if self._ipversion == '4':
+                iptables_names_file = '/proc/net/ip_tables_names'
+                if os.path.isfile(iptables_names_file):
+                    table_names = open(iptables_names_file, 'r').read()
+                    if table_names:
+                        return table_names.splitlines()
+                    else:
+                        return self.TABLES
+            else:
+                iptables_names_file = '/proc/net/ip6_tables_names'
+                if os.path.isfile(iptables_names_file):
+                    table_names = open(iptables_names_file, 'r').read()
+                    if table_names:
+                        return table_names.splitlines()
+                    else:
+                        return self.TABLES
+        return []
 
     # If /etc/debian_version exist, this means this is a debian based OS (Ubuntu, Mint, etc...)
     def _is_debian(self):
