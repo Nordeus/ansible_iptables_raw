@@ -3,7 +3,7 @@ Module for Ansible which makes it easy to manage `iptables` and it keeps state.
 
 ### Documentation
  * [Module documentation](https://nordeus.github.io/ansible-custom-modules/iptables_raw.html)
- * [Managing Iptables with Ansible the Easy Way](https://nordeus.com/blog/engineering/managing-iptables-with-ansible-the-easy-way/) blog post
+ * [Managing Iptables with Ansible the Easy Way](https://engineering.nordeus.com/managing-iptables-with-ansible-the-easy-way/) blog post
 
 ### Installation
 To use the `iptables_raw` module just copy the file into `./library`, alongside your top level playbooks, or copy it into the path specified by `ANSIBLE_LIBRARY` or the `--module-path` command line option.
